@@ -36,6 +36,10 @@ class Customer extends Model
 public function user(){
     return $this->belongsTo(User::class, 'user_id');
 }
+public function orders()
+{
+    return $this->hasMany(Order::class);
+}
 public function generateCustomerCode(){
     $customerCode = 'C' . str_pad($this->id, 5, '0', STR_PAD_LEFT);
     return $customerCode;

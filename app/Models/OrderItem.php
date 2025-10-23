@@ -1,0 +1,52 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
+class OrderItem extends Model
+{
+    use SoftDeletes, HasFactory;
+    protected $fillable = [
+        'order_id',
+        'item_type',
+        'description',
+        'quantity',
+        'unit_price',
+        'total_price',
+        'special_instructions',
+        'metadata',
+    ];
+
+    protected $casts = [
+        'unit_price' => 'decimal:2',
+        'total_price' => 'decimal:2',
+    ];
+
+    public function order(){
+        return $this->belongsTo(Order::class, 'order_id');
+    }
+    protected static function boot(){
+        parent::boot();
+        
+        static::saving(function($item){
+            $item->total_price = $item->quantity * $item->unit_price;
+        });
+        
+        static::saved(function($item){
+            // Reload the order to ensure it's fresh
+            $order = $item->order()->first();
+            if ($order) {
+                $order->calculateTotal();
+            }
+        });
+    
+        static::deleted(function($item){
+            $order = $item->order()->first();
+            if ($order) {
+                $order->calculateTotal();
+            }
+        });
+    }
+}
