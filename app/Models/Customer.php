@@ -34,7 +34,11 @@ class Customer extends Model
 
 //relationship for the customer model
 public function user(){
-    return $this->belongsTo(User::class);
+    return $this->belongsTo(User::class, 'user_id');
+}
+public function generateCustomerCode(){
+    $customerCode = 'C' . str_pad($this->id, 5, '0', STR_PAD_LEFT);
+    return $customerCode;
 }
 
     

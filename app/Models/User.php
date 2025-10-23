@@ -59,7 +59,10 @@ class User extends Authenticatable
     /**
      * This is now were we put the relationships for the user model
      */
-    // public function customer(){
-    //     return $this->hasOne(Customer::class);
-    // }
+    public function customer(){
+        return $this->hasOne(Customer::class);
+    }
+    public function employee(){
+        return $this->hasOne(Employee::class);
+    }
 }
