@@ -50,6 +50,14 @@ class Order extends Model
     {
         return $this->belongsTo(Employee::class, 'employee_id');
     }
+    public function invoice()
+    {
+        return $this->hasOne(Invoice::class);
+    }
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
     public function items()
     {
         return $this->hasMany(OrderItem::class);

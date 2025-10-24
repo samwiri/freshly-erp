@@ -7,4 +7,5 @@ include 'users/users.php';
 
 Route::middleware('api.auth')->group(function () {
     include 'Orders/orders.php';
+    include 'Payments/payment.php';
 });

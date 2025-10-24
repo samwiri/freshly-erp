@@ -26,6 +26,13 @@ class Employee extends Model
         'emergency_contact_phone',
         'notes',
     ];
+    protected $hidden = [
+        'permissions',
+        'work_schedule',
+        'emergency_contact_name',
+        'emergency_contact_phone',
+        'notes',
+    ];
 
     protected $casts = [
         'work_schedule' => 'array',

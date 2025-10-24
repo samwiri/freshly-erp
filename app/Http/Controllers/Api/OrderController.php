@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Employee;
 use Illuminate\Support\Facades\Log;
+use App\Models\Invoice;
 
 class OrderController extends Controller
 {
@@ -29,6 +30,7 @@ class OrderController extends Controller
             'priority' => 'required|in:low,medium,high,urgent',
             'special_instructions' => 'nullable|string',
             'delivery_address' => 'nullable|string',
+            'discount' => 'nullable|numeric|min:0',
             'pickup_time' => 'nullable|date',
             'delivery_time' => 'nullable|date',
             'items' => 'required|array',
@@ -36,6 +38,7 @@ class OrderController extends Controller
             'items.*.description' => 'nullable|string',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_price' => 'required|numeric|min:0'
+
         ]);
 
         DB::beginTransaction();
@@ -54,6 +57,7 @@ class OrderController extends Controller
                 'service_type' => $validated['service_type'],
                 'status' => $validated['status'],
                 'priority' => $validated['priority'],
+                'discount' => $validated['discount'],
                 'special_instructions' => $validated['special_instructions'],
                 'payment_status' => 'pending',
                 'delivery_address' => $validated['delivery_address'],
@@ -91,6 +95,19 @@ class OrderController extends Controller
             
             // Now Auth::user() will work properly with middleware
             $order->updateStatus($validated['status'], Auth::user()->id, 'Order created');
+
+            //create the invoice for the order
+            $invoice = Invoice::create([
+                'order_id' => $order->id,
+                'customer_id' => $order->customer_id,
+                'invoice_date' => now(),
+                'due_date' => now()->addDays(30),
+                'subtotal' => $order->subtotal,
+                'tax' => $order->tax,
+                'discount' => $order->discount,
+                'total' => $order->total,
+                'status' => 'draft',
+            ]);
             Log::info('Order status history updated', [
                 'order_id' => $order->id,
                 'status' => $validated['status'],
@@ -105,7 +122,7 @@ class OrderController extends Controller
             
             return response()->json([
                 'message' => 'Order created successfully',
-                'order' => $order->load(['items', 'customer', 'employee'])
+                'order' => $order->load(['items', 'customer', 'employee', 'invoice'])
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();

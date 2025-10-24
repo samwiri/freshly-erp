@@ -5,7 +5,4 @@ use App\Http\Controllers\Api\OrderController;
 
 Route::prefix('orders')->group(function () {
     Route::post('/', [OrderController::class, 'createOrder']);
-    Route::get('/', [OrderController::class, 'getOrders']);
-    Route::get('/{id}', [OrderController::class, 'getOrder']);
-    Route::put('/{id}', [OrderController::class, 'updateOrder']);
 });
