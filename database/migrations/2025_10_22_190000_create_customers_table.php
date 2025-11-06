@@ -14,9 +14,17 @@ return new class extends Migration
     Schema::create('customers', function (Blueprint $table) {
     $table->id();
     $table->foreignId('user_id')->constrained()->onDelete('cascade');
-    $table->string('customer_code', 20)->unique();
+    $table->string('customer_code', 20)->unique()->nullable();
     $table->string('company_name')->nullable();
-    $table->enum('customer_type', ['individual', 'corporate'])->default('individual');
+    $table->string('email')->unique();
+    $table->string('phone', 20)->nullable();
+    $table->string('address')->nullable();
+    $table->string('city')->nullable();
+    $table->string('state')->nullable();
+    $table->string('zip', 10)->nullable();
+    $table->string('tax_id')->nullable();
+    $table->string('country')->nullable()->default('uganda');
+    $table->enum('customer_type', ['individual', 'business'])->default('individual');
     $table->text('billing_address')->nullable();
     $table->text('delivery_address')->nullable();
     $table->string('emergency_contact_name')->nullable();
@@ -27,6 +35,7 @@ return new class extends Migration
     $table->integer('total_orders')->default(0);
     $table->timestamp('last_order_date')->nullable();
     $table->json('preferences')->nullable();
+    $table->json('tags')->nullable();
     $table->text('notes')->nullable();
     $table->timestamps();
     $table->softDeletes();

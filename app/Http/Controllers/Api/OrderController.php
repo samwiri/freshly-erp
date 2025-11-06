@@ -25,19 +25,19 @@ class OrderController extends Controller
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'employee_id' => 'nullable|exists:employees,id',
-            'service_type' => 'required|in:wash,dry_clean,express,ironing,alterations',
-            'status' => 'required|in:received,washing,drying,ironing,ready,delivered,cancelled',
-            'priority' => 'required|in:low,medium,high,urgent',
-            'special_instructions' => 'nullable|string',
+            // 'service_type' => 'required|in:wash,dry_clean,express,ironing,alterations',
+            // 'status' => 'required|in:received,washing,drying,ironing,ready,delivered,cancelled',
+            // 'priority' => 'required|in:low,medium,high,urgent',
+            'notes' => 'nullable|string',
             'delivery_address' => 'nullable|string',
             'discount' => 'nullable|numeric|min:0',
-            'pickup_time' => 'nullable|date',
-            'delivery_time' => 'nullable|date',
+            'pickupDate' => 'nullable|date',
+            'deliveryDate' => 'nullable|date',
             'items' => 'required|array',
-            'items.*.item_type' => 'required|string',
-            'items.*.description' => 'nullable|string',
+            // 'items.*.item_type' => '|string',
+            'items.*.service_type' => 'required|in:wash,Dry Cleaning,express,ironing,alterations',
             'items.*.quantity' => 'required|integer|min:1',
-            'items.*.unit_price' => 'required|numeric|min:0'
+            'items.*.price' => 'required|numeric|min:0'
 
         ]);
 
@@ -50,19 +50,18 @@ class OrderController extends Controller
                 ]);
                 return response()->json(['error' => 'Employee not found'], 404);
             }
-
             $order = Order::create([
                 'customer_id' => $validated['customer_id'],
                 'employee_id' => $validated['employee_id'],
-                'service_type' => $validated['service_type'],
-                'status' => $validated['status'],
-                'priority' => $validated['priority'],
-                'discount' => $validated['discount'],
-                'special_instructions' => $validated['special_instructions'],
+                // 'service_type' => $validated['service_type'],
+                'status' => "received",
+                // 'priority' => $validated['priority'],
+                // 'discount' => $validated['discount'],
+                'special_instructions' => $validated['notes'],
                 'payment_status' => 'pending',
-                'delivery_address' => $validated['delivery_address'],
-                'pickup_time' => $validated['pickup_time'],
-                'delivery_time' => $validated['delivery_time'],
+                // 'delivery_address' => $validated['delivery_address'],
+                'pickup_time' => $validated['pickupDate'],
+                'delivery_time' => $validated['deliveryDate'],
             ]);
 
             Log::info('Order created in DB', [
@@ -72,10 +71,10 @@ class OrderController extends Controller
             foreach ($validated['items'] as $item) {
                 $orderItem = OrderItem::create([
                     'order_id' => $order->id,
-                    'item_type' => $item['item_type'],
-                    'description' => $item['description'],
+                    // 'item_type' => $item['item_type'],
+                    'service_type' => $item['service_type'],
                     'quantity' => $item['quantity'],
-                    'unit_price' => $item['unit_price']
+                    'price' => $item['price']
                 ]);
                 Log::info('Order item created', [
                     'order_id' => $order->id,
@@ -94,7 +93,7 @@ class OrderController extends Controller
             ]);
             
             // Now Auth::user() will work properly with middleware
-            $order->updateStatus($validated['status'], Auth::user()->id, 'Order created');
+            $order->updateStatus("received", Auth::user()->id, 'Order created');
 
             //create the invoice for the order
             $invoice = Invoice::create([
@@ -104,15 +103,15 @@ class OrderController extends Controller
                 'due_date' => now()->addDays(30),
                 'subtotal' => $order->subtotal,
                 'tax' => $order->tax,
-                'discount' => $order->discount,
+                'discount' => "0.12",
                 'total' => $order->total,
                 'status' => 'draft',
             ]);
-            Log::info('Order status history updated', [
-                'order_id' => $order->id,
-                'status' => $validated['status'],
-                'changed_by' => Auth::user()->id,
-            ]);
+            // Log::info('Order status history updated', [
+            //     'order_id' => $order->id,
+            //     'status' => $validated['status'],
+            //     'changed_by' => Auth::user()->id,
+            // ]);
             
             DB::commit();
             
@@ -135,7 +134,7 @@ class OrderController extends Controller
     }
 
     public function getOrders(){
-        $orders = Order::with(['items', 'customer', 'employee'])->get();
+        $orders = Order::with(['items', 'customer','customer.user', 'employee'])->get();
         return response()->json([
             'message' => 'Orders fetched successfully',
             'orders' => $orders,

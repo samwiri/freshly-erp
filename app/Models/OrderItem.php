@@ -11,9 +11,11 @@ class OrderItem extends Model
     protected $fillable = [
         'order_id',
         'item_type',
+        'service_type',
         'description',
         'quantity',
         'unit_price',
+        'price',
         'total_price',
         'special_instructions',
         'metadata',
@@ -21,6 +23,7 @@ class OrderItem extends Model
 
     protected $casts = [
         'unit_price' => 'decimal:2',
+        'price' => 'decimal:2',
         'total_price' => 'decimal:2',
     ];
 
@@ -31,7 +34,16 @@ class OrderItem extends Model
         parent::boot();
         
         static::saving(function($item){
-            $item->total_price = $item->quantity * $item->unit_price;
+            // Sync price and unit_price - if price is set, use it; otherwise use unit_price
+            if (isset($item->price) && $item->price !== null) {
+                $item->unit_price = $item->price;
+            } elseif (isset($item->unit_price) && $item->unit_price !== null) {
+                $item->price = $item->unit_price;
+            }
+            
+            // Calculate total_price using unit_price (or price if unit_price is null)
+            $unitPrice = $item->unit_price ?? $item->price ?? 0;
+            $item->total_price = $item->quantity * $unitPrice;
         });
         
         static::saved(function($item){

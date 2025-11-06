@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
- //use Illuminate\Contracts\Auth\MustVerifyEmail;
+//use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -59,10 +59,34 @@ class User extends Authenticatable
     /**
      * This is now were we put the relationships for the user model
      */
-    public function customer(){
-        return $this->hasOne(Customer::class);
+    //scopes
+    public  function  emailInUse( $email)
+    {
+        return $this->where('email', $email);
     }
-    public function employee(){
-        return $this->hasOne(Employee::class);
+ 
+
+
+    public function customer()
+    {
+        return $this->hasMany(Customer::class);
     }
+    public function employee()
+    {
+        return $this->hasMany(Employee::class);
+    }
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class);
+    }
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+
 }

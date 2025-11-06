@@ -15,6 +15,14 @@ class Customer extends Model
         'user_id',
         'customer_code',
         'company_name',
+        'email',
+        'phone',
+        'address',
+        'city',
+        'state',
+        'zip',
+        'country',
+        'tax_id',
         'customer_type',
         'billing_address',
         'delivery_address',
@@ -22,11 +30,18 @@ class Customer extends Model
         'emergency_contact_phone',
         'loyalty_points',
         'loyalty_tier',
+        'lifetime_value',
+        'total_orders',
+        'last_order_date',
+        'preferences',
+        'tags',
+        'notes',
     ];
 
     protected $casts = [
         'preferences' => 'array',
-        'loyalty_points' => 'string',
+        'tags' => 'array',
+        'loyalty_points' => 'integer',
         'total_orders' => 'integer',
         'last_order_date' => 'datetime',
         'lifetime_value' => 'decimal:2',
@@ -40,9 +55,9 @@ public function orders()
 {
     return $this->hasMany(Order::class);
 }
-public function generateCustomerCode(){
-    $customerCode = 'C' . str_pad($this->id, 5, '0', STR_PAD_LEFT);
-    return $customerCode;
+// Optional helper if needed in future
+public static function generateCustomerCodeForId($id){
+    return 'C' . str_pad((string)$id, 5, '0', STR_PAD_LEFT);
 }
 
     
