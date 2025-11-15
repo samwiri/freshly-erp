@@ -27,7 +27,7 @@ public function create(Request $request){
         'email' => 'required|email|unique:customers,email',
         'phone' => 'nullable|string|max:20',
         'dateOfBirth' => 'nullable|date',
-        'gender' => 'nullable|string|in:male,female,other',
+        'gender' => 'required|string|in:male,female,other',
         'customerType' => 'required|string|in:individual,business',
         'taxId' => 'nullable|string|max:255',
         'company' => 'nullable|string|max:255',

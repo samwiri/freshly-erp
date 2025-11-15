@@ -11,11 +11,14 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Employee;
 use Illuminate\Support\Facades\Log;
 use App\Models\Invoice;
-
+use App\Models\Customer;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\OrderReceived;
 class OrderController extends Controller
 {
 
     public function createOrder(Request $request){
+        $userId = Auth::user()->id;
         // Log the request input for audit/debug
         Log::info('Creating order. Incoming request', [
             'user_id' => Auth::user() ? Auth::user()->id : null,
@@ -52,7 +55,8 @@ class OrderController extends Controller
             }
             $order = Order::create([
                 'customer_id' => $validated['customer_id'],
-                'employee_id' => $validated['employee_id'],
+                'employee_id' => $validated['employee_id'] ?? null,
+                'user_id' => Auth::user()->id,
                 // 'service_type' => $validated['service_type'],
                 'status' => "received",
                 // 'priority' => $validated['priority'],
@@ -118,7 +122,22 @@ class OrderController extends Controller
             Log::info('Order creation transaction committed', [
                 'order_id' => $order->id
             ]);
-            
+            $customer = Customer::find($order->customer_id);
+            $customer->updateTotalOrders($order->customer_id);
+            $customer->updateTotalSpend($order->customer_id);
+            try {
+                Mail::to($order->customer->email)->send(new OrderReceived($order));
+                Log::info('Order confirmation email sent', [
+                    'order_id' => $order->id,
+                    'customer_email' => $order->customer->email
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to send order confirmation email', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage()
+                ]);
+                // Don't fail the order creation if email fails
+            }
             return response()->json([
                 'message' => 'Order created successfully',
                 'order' => $order->load(['items', 'customer', 'employee', 'invoice'])
@@ -141,18 +160,36 @@ class OrderController extends Controller
         ], 200);
     }
 
-    public function getOrder($id){
-        $order = Order::with(['items', 'customer', 'employee'])->find($id);
-        
-        if (!$order) {
+    public function deleteOrder($id){
+        $order = Order::find($id);
+        if(!$order){
             return response()->json([
                 'message' => 'Order not found',
             ], 404);
         }
-        
+        $order->delete();
+        return response()->json([
+            'message' => 'Order deleted successfully',
+        ], 200);
+    }
+
+    public function getOrder($id){
+        //CHECK IF THE ORDER IS BELONG TO THE USER
+        $order = Order::where('id', $id)->where('user_id', Auth::user()->id) || Order::where('id', $id)->where('employee_id', Auth::user()->id)->first();
+        if(!$order){
+            return response()->json([
+                'message' => 'Order not found or you are not authorized to access this order',
+            ], 403);
+        }
+        $order = Order::with(['items', 'customer', 'employee'])->find($id);
+        if(!$order){
+            return response()->json([
+                'message' => 'Order not found',
+            ], 404);
+        }
         return response()->json([
             'message' => 'Order fetched successfully',
-            'order' => $order,
+            'order' => $order->load(['items', 'customer', 'employee']),
         ], 200);
     }
 

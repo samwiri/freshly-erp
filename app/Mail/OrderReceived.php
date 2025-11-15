@@ -8,17 +8,20 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use App\Models\Order;
 
-class OrderReceived extends Mailable
+class OrderReceived extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
+
+    public $order;
 
     /**
      * Create a new message instance.
      */
-    public function __construct()
+    public function __construct(Order $order)
     {
-        //
+        $this->order = $order;
     }
 
     /**
@@ -27,7 +30,7 @@ class OrderReceived extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Order Received',
+            subject: 'Order Received - Order #' . $this->order->id,
         );
     }
 
@@ -37,7 +40,7 @@ class OrderReceived extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'view.name',
+            view: 'emails.order-received',
         );
     }
 

@@ -55,6 +55,28 @@ public function orders()
 {
     return $this->hasMany(Order::class);
 }
+
+public function updateTotalOrders($customerId){
+    $customer = Customer::find($customerId);
+    if(!$customer){
+        return response()->json([
+            'message' => 'Customer not found',
+        ], 404);
+    }
+    $customer->total_orders = $customer->orders()->count();
+    $customer->save();
+    $this->save();
+}
+public function updateTotalSpend($customerId){
+    $customer = Customer::find($customerId);
+    if(!$customer){
+        return response()->json([
+            'message' => 'Customer not found',
+        ], 404);
+    }
+    $customer->total_spend = $customer->orders()->sum('total');
+    $customer->save();
+}
 // Optional helper if needed in future
 public static function generateCustomerCodeForId($id){
     return 'C' . str_pad((string)$id, 5, '0', STR_PAD_LEFT);
