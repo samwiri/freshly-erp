@@ -14,10 +14,12 @@ use App\Models\Invoice;
 use App\Models\Customer;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\OrderReceived;
+
 class OrderController extends Controller
 {
 
-    public function createOrder(Request $request){
+    public function createOrder(Request $request)
+    {
         $userId = Auth::user()->id;
         // Log the request input for audit/debug
         Log::info('Creating order. Incoming request', [
@@ -38,7 +40,7 @@ class OrderController extends Controller
             'deliveryDate' => 'nullable|date',
             'items' => 'required|array',
             // 'items.*.item_type' => '|string',
-            'items.*.service_type' => 'required|in:wash,Dry Cleaning,express,ironing,alterations',
+            'items.*.service_type' => 'required',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.price' => 'required|numeric|min:0'
 
@@ -86,7 +88,7 @@ class OrderController extends Controller
                     'item_type' => $orderItem->item_type
                 ]);
             }
-            
+
             $order->load('items'); // Load the items relationship before calculating total
             $order->calculateTotal();
             Log::info('Order total calculated', [
@@ -95,7 +97,7 @@ class OrderController extends Controller
                 'tax' => $order->tax,
                 'total' => $order->total
             ]);
-            
+
             // Now Auth::user() will work properly with middleware
             $order->updateStatus("received", Auth::user()->id, 'Order created');
 
@@ -116,9 +118,9 @@ class OrderController extends Controller
             //     'status' => $validated['status'],
             //     'changed_by' => Auth::user()->id,
             // ]);
-            
+
             DB::commit();
-            
+
             Log::info('Order creation transaction committed', [
                 'order_id' => $order->id
             ]);
@@ -152,37 +154,43 @@ class OrderController extends Controller
         }
     }
 
-    public function getOrders(){
-        $orders = Order::with(['items', 'customer','customer.user', 'employee'])->get();
+    public function getOrders()
+    {
+        $orders = Order::with(['items', 'customer', 'customer.user', 'employee'])->get();
         return response()->json([
             'message' => 'Orders fetched successfully',
             'orders' => $orders,
         ], 200);
     }
 
-    public function deleteOrder($id){
+    public function deleteOrder($id)
+    {
         $order = Order::find($id);
-        if(!$order){
+        if (!$order) {
             return response()->json([
                 'message' => 'Order not found',
             ], 404);
         }
         $order->delete();
+        $customer = Customer::find($order->customer_id);
+        $customer->updateTotalOrders($order->customer_id);
+        $customer->updateTotalSpend($order->customer_id);
         return response()->json([
             'message' => 'Order deleted successfully',
         ], 200);
     }
 
-    public function getOrder($id){
+    public function getOrder($id)
+    {
         //CHECK IF THE ORDER IS BELONG TO THE USER
         $order = Order::where('id', $id)->where('user_id', Auth::user()->id) || Order::where('id', $id)->where('employee_id', Auth::user()->id)->first();
-        if(!$order){
+        if (!$order) {
             return response()->json([
                 'message' => 'Order not found or you are not authorized to access this order',
             ], 403);
         }
         $order = Order::with(['items', 'customer', 'employee'])->find($id);
-        if(!$order){
+        if (!$order) {
             return response()->json([
                 'message' => 'Order not found',
             ], 404);
@@ -193,15 +201,16 @@ class OrderController extends Controller
         ], 200);
     }
 
-    public function updateOrder(Request $request, $id){
+    public function updateOrder(Request $request, $id)
+    {
         $order = Order::find($id);
-        
+
         if (!$order) {
             return response()->json([
                 'message' => 'Order not found',
             ], 404);
         }
-        
+
         $order->update($request->all());
         return response()->json([
             'message' => 'Order updated successfully',

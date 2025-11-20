@@ -7,13 +7,19 @@ use Illuminate\Http\Request;
 use App\Models\Customer;
 class CustomerController extends Controller
 {
-public function index(Request $request){
+public function index(Request $request, $name = null)
+{
     $userId = $request->user()?->id;
+
     $customers = Customer::with('user')
         ->when($userId, function ($query) use ($userId) {
             $query->where('user_id', $userId);
         })
+        ->when($name && strlen($name) > 2, function ($query) use ($name) {
+            $query->where('preferences->name', 'like', "%{$name}%");
+        })
         ->get();
+        
     return response()->json([
         'message' => 'Customers fetched successfully',
         'customers' => $customers,

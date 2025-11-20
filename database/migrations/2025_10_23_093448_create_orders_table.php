@@ -17,7 +17,7 @@ return new class extends Migration
     $table->foreignId('customer_id')->constrained()->onDelete('cascade');
     $table->foreignId('employee_id')->nullable()->constrained()->onDelete('set null');
     $table->string('user_id')->nullable();
-    $table->enum('service_type', ['wash', 'dry_clean', 'express', 'ironing', 'alterations']);
+    $table->string('service_type')->nullable(); 
     $table->enum('status', ['received', 'washing', 'drying', 'ironing', 'ready', 'delivered', 'cancelled'])->default('received');
     $table->enum('priority', ['low', 'medium', 'high', 'urgent'])->default('medium');
     $table->decimal('weight', 8, 2)->nullable();
