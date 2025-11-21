@@ -155,8 +155,12 @@ class OrderController extends Controller
     }
 
     public function getOrders()
+
     {
-        $orders = Order::with(['items', 'customer', 'customer.user', 'employee'])->get();
+        $userId = Auth::user()->id;
+        $orders = Order::with(['items', 'customer', 'customer.user', 'employee'])->when($userId, function ($query) use ($userId) {
+            $query->where('user_id', $userId);
+        })->get();
         return response()->json([
             'message' => 'Orders fetched successfully',
             'orders' => $orders,
