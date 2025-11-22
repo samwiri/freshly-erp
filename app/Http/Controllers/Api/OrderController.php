@@ -20,10 +20,10 @@ class OrderController extends Controller
 
     public function createOrder(Request $request)
     {
-        $userId = Auth::user()->id;
+        $userId = $request->user()?->id;
         // Log the request input for audit/debug
         Log::info('Creating order. Incoming request', [
-            'user_id' => Auth::user() ? Auth::user()->id : null,
+            'user_id' => $userId,
             'payload' => $request->all()
         ]);
 
@@ -58,7 +58,7 @@ class OrderController extends Controller
             $order = Order::create([
                 'customer_id' => $validated['customer_id'],
                 'employee_id' => $validated['employee_id'] ?? null,
-                'user_id' => Auth::user()->id,
+                'user_id' => $request->user()?->id,
                 // 'service_type' => $validated['service_type'],
                 'status' => "received",
                 // 'priority' => $validated['priority'],
@@ -154,18 +154,25 @@ class OrderController extends Controller
         }
     }
 
-    public function getOrders()
-
-    {
-        $userId = Auth::user()->id;
-        $orders = Order::with(['items', 'customer', 'customer.user', 'employee'])->when($userId, function ($query) use ($userId) {
-            $query->where('user_id', $userId);
-        })->get();
-        return response()->json([
-            'message' => 'Orders fetched successfully',
-            'orders' => $orders,
-        ], 200);
-    }
+ public function getOrders(Request $request)
+{
+    $userId = $request->user()?->id;
+    Log::info('Fetching orders for user', ['user_id' => $userId]);
+    
+    $orders = Order::with(['items', 'customer', 'customer.user', 'employee'])
+        ->select('orders.*')
+        ->join('customers', 'orders.customer_id', '=', 'customers.id')
+        ->when($userId, function ($query) use ($userId) {
+            $query->where('customers.user_id', $userId);
+        })
+        ->orderBy('orders.id', 'desc') // Add ordering to get newest first
+        ->get();
+        
+    return response()->json([
+        'message' => 'Orders fetched successfully',
+        'orders' => $orders,
+    ], 200);
+}
 
     public function deleteOrder($id)
     {
@@ -184,15 +191,18 @@ class OrderController extends Controller
         ], 200);
     }
 
-    public function getOrder($id)
+    public function getOrder(Request $request, $id)
     {
-        //CHECK IF THE ORDER IS BELONG TO THE USER
-        $order = Order::where('id', $id)->where('user_id', Auth::user()->id) || Order::where('id', $id)->where('employee_id', Auth::user()->id)->first();
+        
+        $userId = $request->user()?->id;
+        $order = Order::where('id', $id)->where('user_id', $userId) || Order::where('id', $id)->where('employee_id', $userId)->first();
         if (!$order) {
             return response()->json([
                 'message' => 'Order not found or you are not authorized to access this order',
             ], 403);
         }
+        Log::info('Fetching order ' .$order);
+
         $order = Order::with(['items', 'customer', 'employee'])->find($id);
         if (!$order) {
             return response()->json([
