@@ -9,4 +9,5 @@ Route::middleware('api.auth')->group(function () {
     include 'Orders/orders.php';
     include 'Payments/payment.php';
     include 'customer/customer.php';
+    include 'Invoice/invoice.php';
 });
