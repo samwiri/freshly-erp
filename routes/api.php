@@ -10,4 +10,5 @@ Route::middleware('api.auth')->group(function () {
     include 'Payments/payment.php';
     include 'customer/customer.php';
     include 'Invoice/invoice.php';
+    include 'settings/settings.php';
 });

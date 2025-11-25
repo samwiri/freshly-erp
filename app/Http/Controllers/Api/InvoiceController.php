@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Invoice;
+use App\Models\OrderItem;
+
 class InvoiceController extends Controller
 {
     public function createInvoice(Request $request){
@@ -23,18 +25,25 @@ class InvoiceController extends Controller
             'invoice' => $invoice,
         ], 201);
     }
-    public function showInvoice($id){
-        $invoice = Invoice::with(['order', 'customer', 'customer.user'])->find($id);
-        if (!$invoice) {
-            return response()->json([
-                'message' => 'Invoice not found',
-            ], 404);
-        }
+  public function showInvoice($id){
+    $invoice = Invoice::with([
+        'order.items',  // Load order items through the order relationship
+        'customer.user'
+    ])
+    ->where('order_id', $id)
+    ->first();
+    
+    if (!$invoice) {
         return response()->json([
-            'message' => 'Invoice fetched successfully',
-            'invoice' => $invoice,
-        ], 200);
+            'message' => 'Invoice not found',
+        ], 404);
     }
+    
+    return response()->json([
+        'message' => 'Invoice fetched successfully',
+        'invoice' => $invoice,
+    ], 200);
+}
     public function index (Request $request){
         $userId = $request->user()?->id;
         $invoices = Invoice::with(['order', 'customer', 'customer.user'])
