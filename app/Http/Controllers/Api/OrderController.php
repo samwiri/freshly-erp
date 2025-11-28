@@ -14,6 +14,8 @@ use App\Models\Invoice;
 use App\Models\Customer;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\OrderReceived;
+use App\Models\ServiceItem;
+
 
 class OrderController extends Controller
 {
@@ -30,21 +32,17 @@ class OrderController extends Controller
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'employee_id' => 'nullable|exists:employees,id',
-            // 'service_type' => 'required|in:wash,dry_clean,express,ironing,alterations',
-            // 'status' => 'required|in:received,washing,drying,ironing,ready,delivered,cancelled',
-            // 'priority' => 'required|in:low,medium,high,urgent',
             'notes' => 'nullable|string',
             'delivery_address' => 'nullable|string',
             'discount' => 'nullable|numeric|min:0',
             'pickupDate' => 'nullable|date',
             'deliveryDate' => 'nullable|date',
-            'items' => 'required|array',
-            // 'items.*.item_type' => '|string',
-            'items.*.service_type' => 'required',
-            'items.*.quantity' => 'required|integer|min:1',
-            'items.*.price' => 'required|numeric|min:0'
 
+            'items' => 'required|array',
+            'items.*.service_item_id' => 'required|exists:service_items,id',
+            'items.*.quantity' => 'required|integer|min:1'
         ]);
+
 
         DB::beginTransaction();
         try {
@@ -75,19 +73,29 @@ class OrderController extends Controller
             ]);
 
             foreach ($validated['items'] as $item) {
+
+                $service = ServiceItem::find($item['service_item_id']);
+                $unitPrice = $service->base_price;
+
+                $totalPrice = $unitPrice * $item['quantity'];
+
                 $orderItem = OrderItem::create([
                     'order_id' => $order->id,
-                    // 'item_type' => $item['item_type'],
-                    'service_type' => $item['service_type'],
+                    'service_item_id' => $service->id,
+                    'item_type' => $service->name,       // optional
+                    'description' => $service->description,
                     'quantity' => $item['quantity'],
-                    'price' => $item['price']
+                    'unit_price' => $unitPrice,
+                    'total_price' => $totalPrice,
                 ]);
+
                 Log::info('Order item created', [
                     'order_id' => $order->id,
                     'order_item_id' => $orderItem->id,
-                    'item_type' => $orderItem->item_type
+                    'service_item_id' => $service->id
                 ]);
             }
+
 
             $order->load('items'); // Load the items relationship before calculating total
             $order->calculateTotal();
@@ -154,25 +162,25 @@ class OrderController extends Controller
         }
     }
 
- public function getOrders(Request $request)
-{
-    $userId = $request->user()?->id;
-    Log::info('Fetching orders for user', ['user_id' => $userId]);
-    
-    $orders = Order::with(['items', 'customer', 'customer.user', 'employee'])
-        ->select('orders.*')
-        ->join('customers', 'orders.customer_id', '=', 'customers.id')
-        ->when($userId, function ($query) use ($userId) {
-            $query->where('customers.user_id', $userId);
-        })
-        ->orderBy('orders.id', 'desc') // Add ordering to get newest first
-        ->get();
-        
-    return response()->json([
-        'message' => 'Orders fetched successfully',
-        'orders' => $orders,
-    ], 200);
-}
+    public function getOrders(Request $request)
+    {
+        $userId = $request->user()?->id;
+        Log::info('Fetching orders for user', ['user_id' => $userId]);
+
+        $orders = Order::with(['items', 'customer', 'customer.user', 'employee'])
+            ->select('orders.*')
+            ->join('customers', 'orders.customer_id', '=', 'customers.id')
+            ->when($userId, function ($query) use ($userId) {
+                $query->where('customers.user_id', $userId);
+            })
+            ->orderBy('orders.id', 'desc') // Add ordering to get newest first
+            ->get();
+
+        return response()->json([
+            'message' => 'Orders fetched successfully',
+            'orders' => $orders,
+        ], 200);
+    }
 
     public function deleteOrder($id)
     {
@@ -193,7 +201,7 @@ class OrderController extends Controller
 
     public function getOrder(Request $request, $id)
     {
-        
+
         $userId = $request->user()?->id;
         $order = Order::where('id', $id)->where('user_id', $userId) || Order::where('id', $id)->where('employee_id', $userId)->first();
         if (!$order) {
@@ -201,7 +209,7 @@ class OrderController extends Controller
                 'message' => 'Order not found or you are not authorized to access this order',
             ], 403);
         }
-        Log::info('Fetching order ' .$order);
+        Log::info('Fetching order ' . $order);
 
         $order = Order::with(['items', 'customer', 'employee'])->find($id);
         if (!$order) {

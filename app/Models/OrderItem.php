@@ -30,6 +30,9 @@ class OrderItem extends Model
     public function order(){
         return $this->belongsTo(Order::class, 'order_id');
     }
+    public function serviceItem(){
+        return $this->belongsTo(ServiceItem::class, 'service_item_id');
+    }
     protected static function boot(){
         parent::boot();
         

@@ -61,4 +61,5 @@ class ServiceItemController extends Controller
         $serviceItem->delete();
         return response()->json($serviceItem);
     }
+    
 }
